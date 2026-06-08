@@ -70,7 +70,7 @@
 ├── dnd-combat/          ← 战斗初始化 + 结算
 │   └── references/      ← L4b 模板
 ├── dnd-checkpoint/      ← 轻量状态同步
-├── dnd-node/            ← L6 节点追加
+├── dnd-scene/           ← 场景切换自检（地图级转移时调用 checkpoint）
 ├── dnd-query/           ← 跨文件情报检索
 ├── dnd-expand/          ← 模组动态扩展
 ├── dnd-city-rest/       ← 城市休整与随机遭遇
@@ -86,10 +86,10 @@
 | **核心** | dnd-dm | "游戏继续"、跑团、DND、兰斯、卡芙卡、丝线回廊 |
 | **角色** | dnd-kafka | 卡芙卡、卡芙、邪术士、咒剑士 |
 | **角色** | dnd-lance | 兰斯、野蛮人、狂战士 |
-| **操作** | dnd-save | 存档、保存、记一下 |
-| **操作** | dnd-combat | 战斗开始、先攻、投先攻 |
+| **操作** | dnd-save | 存档、保存 |
+| **操作** | dnd-combat | 战斗开始、先攻、投先攻（不含叙事中的"战斗"一词） |
 | **操作** | dnd-checkpoint | 检查点、检查一下 |
-| **操作** | dnd-node | 记一下、追加节点 |
+| **操作** | dnd-scene | 去、前往、进入、到达、转移到、出发、动身、离开、返回 |
 | **操作** | dnd-query | 查询、查一下 |
 | **操作** | dnd-expand | 扩展、补充模组 |
 | **操作** | dnd-city-rest | 休整、休息几天、城市探索 |
@@ -137,7 +137,7 @@ AI 读取 L1 → L2 → L4 → L5
   ├─ 战斗开始 → dnd-combat（初始化 L4b）
   ├─ 玩家说"存档" → dnd-save（完整存档）
   ├─ 玩家说"检查点" → dnd-checkpoint（轻量同步）
-  ├─ 需要记录事件 → dnd-node（追加 L6）
+  ├─ 需要记录事件 → dnd-scene（追加 L6）
   ├─ 玩家查询信息 → dnd-query（跨文件检索）
   ├─ 玩家想去未设计区域 → dnd-expand（模组扩展）
   ├─ 玩家选择城市休整 → dnd-city-rest（d20 遭遇）
