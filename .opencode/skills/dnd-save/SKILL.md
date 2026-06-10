@@ -18,6 +18,12 @@ description: "执行完整D&D游戏存档流程——同步L4/L5/L6状态，生�
 
 ## 流程
 
+### 0. 执行状态同步检查
+
+执行 `python scripts/sync_state.py --mode save` 获取当前状态快照和一致性检查报告。
+
+脚本输出：角色状态摘要、世界状态、L6 节点连续性检查、一致性问题列表、存档骨架提示。
+
 ### 1. 检查 L4 角色状态
 
 读取 `L4_角色状态.md`，确认与当前上下文是否一致：
@@ -46,6 +52,16 @@ description: "执行完整D&D游戏存档流程——同步L4/L5/L6状态，生�
 - 关键节点类型：战斗 | 剧情进展 | 探索 | 社交 | 角色发展 | 转折 | 商业 | 休整 | 修正
 - 生成规范：读取 L6 最后一个节点的 `node_id`，Session 不变时 Seq+1
 
+**节点格式要求（必须遵守）：**
+每个新节点前必须添加 HTML 注释分隔符，格式如下：
+
+```markdown
+<!-- node: S{Session}N{Seq} | type: {类型} | date: {游戏内日期} | session: {Session} -->
+
+node_id: S{Session}N{Seq}
+...
+```
+
 如需要 → 追加一条或多条 L6 节点。
 
 ### 4. 生成/更新 L6 前情提要
@@ -54,13 +70,17 @@ description: "执行完整D&D游戏存档流程——同步L4/L5/L6状态，生�
 - **② 前情提要**（~600-800 tokens，完整回顾，锚定最近 5-8 个节点）
 - **③ 存档快照**（2-3 段叙事定格，供重启时直接接续）
 
-### 5. 可选 git 提交
+### 5. 更新战役总览
+
+执行 `python generate_overview.py`（位于 `dnd-dm/scripts/`）更新 `L0_战役总览.md`。
+此脚本从 L4/L5/L6/L2 提取数据生成一份玩家视角的战役进度概览。
+
+### 6. 可选 git 提交
 
 ```bash
-git add -A
-git commit -m "checkpoint: 游戏存档" --allow-empty-message --no-verify
+git add -A && git commit -m "save: $(date +%Y%m%d_%H%M%S)" --no-verify
 ```
 
-### 6. 完成
+### 7. 完成
 
-输出一句简洁确认（不输出流程细节）。
+输出一句简洁确认（不输出流程细节）。脚本的 JSON 输出中 `all_issues` 字段列出了需要注意的一致性问题。

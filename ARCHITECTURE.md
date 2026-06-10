@@ -1,7 +1,7 @@
-# 兰斯的冒险 — 架构说明（v3.0）
+# 兰斯的冒险 — 架构说明（v3.4）
 
 > 本文档记录项目的文件体系与 Skill 架构设计。
-> 最后更新：2026-06-08
+> 最后更新：2026-06-10
 
 ---
 
@@ -32,6 +32,29 @@
 - **新增 Skill** → `dnd-city-rest`（城市休整）、`dnd-settle`（模组结算）
 - **文件归档** → 所有历史文件统一移入 `backups/`
 
+### v3.1 核心变化
+
+- **角色 Skill 重构** → SKILL.md 精简至 ~20 行核心行为锚点（身份/说话风格/性格/行为推演/AI边界），深度内容全部迁入 `references/background.md`
+- **Token 优化** → 每次触发注入量从 ~126 行降至 ~20 行（-85%），角色声音锚点每轮常驻，深度知识按需查阅
+- **设计原则** → 示例台词从 SKILL.md 移除（防止 AI 套用），改为抽象风格规则；完整示例保留在 references 供深度叙事时查阅
+
+### v3.2 核心变化
+
+- **Script 注入** → 8 个 Skill 新增 `scripts/` 目录，将结构化操作（检索/骰子/状态同步/地图渲染等）从 AI 指令变为可执行脚本，不消耗 token、100% 确定性
+- **新增 dnd-map Skill** → ASCII 战术地图系统（战斗地图/楼层总览/区域探索），与 dnd-combat 和 dnd-scene 联动
+- **新增氛围骰子系统** → dnd-dm 新增 `references/atmosphere-tables.md`，d6 感官描写表按场景分类
+- **关系追踪自动化** → dnd-dm 新增 `scripts/relationship_check.py`，自动计算 trend 累计和跨档
+- **战斗分级** → dnd-combat 新增"快速战斗"模式，小遭遇不再需要完整 L4b 流程
+- **安全提醒** → 角色 Skill 的 character-sheet.md 增加"⚠ 快照，以 L4 为准"提醒
+- **dnd-node 移除** → 节点追加逻辑已由 dnd-save / dnd-checkpoint / dnd-scene 充分覆盖，不再需要独立 Skill
+
+### v3.3 核心变化
+
+- **模组标准化模板** → 定义 12 节结构（§〇速查索引 → §九叙事锚点），所有模组必须遵循，AI 通过 §〇 精准定位内容（预估 token 节省 70-80%）
+- **新增 dnd-module-gen Skill** → 从素材库抽取元素，按标准模板自动生成新模组。包含生成骨架脚本、验证脚本、设计指南
+- **L2 重构** → 丝线回廊 L2 重构为标准化格式：新增 §〇 速查索引、floorplan JSON、三幕结构标注、失败安全网、完成条件、L5 初始化模板
+- **Skill 联动升级** → dnd-map 改为从 L2 §〇+§二 定位地图数据；dnd-expand 遵循模板格式扩展；dnd-settle 集成 dnd-module-gen 生成新模组
+
 ---
 
 ## 三、文件体系
@@ -40,11 +63,12 @@
 
 | 文件 | 用途 | 更新频率 |
 |------|------|---------|
+| `L0_战役总览.md` | 战役进度概览（脚本生成） | 每次存档 |
 | `L1_世界设定.md` | Forgotten Realms 世界观（静态） | 极少 |
 | `L2_模组框架.md` | 当前模组结构/NPC/战斗设计 | 跨模组 |
 | `L4_角色状态.md` | HP/资源/装备/关系（动态） | 战斗结束/休整/获得物品 |
 | `L4b_战斗日志.md` | 战斗中临时文件 | 战斗期间 |
-| `L5_世界状态.md` | 场景/时间/flag/势力 | 场景切换/flag变化 |
+| `L5_世界状态.md` | 场景/时间/flag/势力/环境栈/情绪节拍 | 场景切换/flag变化 |
 | `L6_冒险笔记.md` | 叙事记忆/节点/前情提要 | 关键事件/存档/会话结束 |
 
 ### 备份目录（Git 保留，AI 无需读取）
@@ -59,24 +83,38 @@
 .opencode/skills/
 ├── dnd-dm/              ← 主 Skill：DM 行为总纲
 │   ├── SKILL.md
-│   └── references/      ← 5 个按需加载文档
-├── dnd-kafka/           ← 角色 Skill：卡芙卡
+│   ├── references/      ← 8 个按需加载文档（含 atmosphere-tables.md, gut-check.md, slow-motion.md）
+│   └── scripts/         ← session_startup.py + relationship_check.py + generate_overview.py
+├── dnd-kafka/           ← 角色 Skill：卡芙卡（含私下低语机制）
 │   ├── SKILL.md
 │   └── references/      ← character-sheet.md + background.md
 ├── dnd-lance/           ← 角色 Skill：兰斯
 │   ├── SKILL.md
 │   └── references/      ← character-sheet.md + background.md
 ├── dnd-save/            ← 存档流程
+│   └── scripts/         ← sync_state.py（含一致性检查）
 ├── dnd-combat/          ← 战斗初始化 + 结算
-│   └── references/      ← L4b 模板
+│   ├── references/      ← L4b 模板
+│   └── scripts/         ← roll_dice.py（含暴击/大失败标记）+ init_combat.py
 ├── dnd-checkpoint/      ← 轻量状态同步
-├── dnd-scene/           ← 场景切换自检（地图级转移时调用 checkpoint）
+├── dnd-scene/           ← 场景切换自检 + 地图联动 + 环境栈初始化
 ├── dnd-query/           ← 跨文件情报检索
+│   └── scripts/         ← query.py
 ├── dnd-expand/          ← 模组动态扩展
 ├── dnd-city-rest/       ← 城市休整与随机遭遇
-│   └── references/      ← d20 遭遇表
-└── dnd-settle/          ← 模组结算
-    └── references/      ← 冒险故事书模板
+│   ├── references/      ← d20 遭遇表
+│   └── scripts/         ← rest_day.py
+├── dnd-settle/          ← 模组结算
+│   ├── references/      ← 冒险故事书模板
+│   └── scripts/         ← generate_storybook.py
+├── dnd-module-gen/      ← 新模组生成（v3.3）
+│   ├── SKILL.md
+│   ├── references/      ← module-template.md + design-guide.md
+│   └── scripts/         ← validate_module.py + generate_skeleton.py
+└── dnd-map/             ← 战术地图系统（v3.2）
+    ├── SKILL.md
+    ├── references/      ← map-symbols.md
+    └── scripts/         ← render_map.py
 ```
 
 ### Skill 分类
@@ -84,7 +122,7 @@
 | 类型 | Skill | 触发方式 |
 |------|-------|---------|
 | **核心** | dnd-dm | "游戏继续"、跑团、DND、兰斯、卡芙卡、丝线回廊 |
-| **角色** | dnd-kafka | 卡芙卡、卡芙、邪术士、咒剑士 |
+| **角色** | dnd-kafka | 卡芙卡、卡芙、邪术士、咒剑士、紫发女人 |
 | **角色** | dnd-lance | 兰斯、野蛮人、狂战士 |
 | **操作** | dnd-save | 存档、保存 |
 | **操作** | dnd-combat | 战斗开始、先攻、投先攻（不含叙事中的"战斗"一词） |
@@ -94,13 +132,17 @@
 | **操作** | dnd-expand | 扩展、补充模组 |
 | **操作** | dnd-city-rest | 休整、休息几天、城市探索 |
 | **操作** | dnd-settle | 模组结束、结算 |
+| **操作** | dnd-module-gen | 新模组、生成模组、下一个冒险 |
+| **操作** | dnd-map | 地图、看看周围、位置、战术地图 |
 
 ### 设计原则
 
-1. **SKILL.md 只放稳定的核心指令** — 性格锚点、说话风格、行为规则等不随游戏变化的内容
-2. **references/ 放详细数据** — 属性表、法术列表、背景故事、操作模板等按需查阅的内容
-3. **动态数据留在 L4** — HP/金币/装备等频繁变化的数据以 L4 为唯一写入点
-4. **角色 Skill 关键词触发** — 提到角色名字时自动加载，确保角色扮演连贯性
+1. **SKILL.md 只放稳定的核心指令** — 角色 Skill 精简至 ~20 行行为锚点，深度内容移入 references/
+2. **references/ 放详细数据** — 属性表、法术列表、背景故事、说话风格示例、操作模板等按需查阅的内容
+3. **scripts/ 放可执行脚本** — 结构化操作（检索/骰子/状态同步/地图渲染）由脚本执行，不消耗 token，100% 确定性
+4. **动态数据留在 L4** — HP/金币/装备等频繁变化的数据以 L4 为唯一写入点
+5. **角色 Skill 关键词触发** — 提到角色名字时自动加载行为锚点，确保角色扮演连贯性
+6. **示例台词不放 SKILL.md** — 防止 AI 反复套用，改为抽象风格规则；完整示例保留在 references 供深度叙事查阅
 
 ---
 
@@ -166,3 +208,7 @@ opencode
 |------|------|---------|
 | 2026-05-18 | 2.0 | 从 Claude Code 迁移至 Hermes Agent |
 | 2026-06-08 | 3.0 | 迁移至 OpenCode。L3/L7 拆分为角色 Skill + 城市休整 Skill。dnd-dm 瘦身（~400→~230行）。新增 dnd-city-rest 和 dnd-settle。历史文件统一归档至 backups/。 |
+| 2026-06-08 | 3.1 | 角色 Skill 重构：SKILL.md 精简至 ~20 行核心行为锚点，深度内容（外貌/性格详解/说话风格示例/行为模式/关系规则）迁入 references/background.md。每次触发 token 消耗降低 ~85%。 |
+| 2026-06-10 | 3.2 | Script 注入：8 个 Skill 新增 scripts/ 目录（query.py/session_startup.py/roll_dice.py/init_combat.py/rest_day.py/sync_state.py/generate_storybook.py/render_map.py/relationship_check.py）。新增 dnd-map Skill（ASCII 战术地图系统）。新增氛围骰子系统。战斗分级（完整/快速）。关系追踪自动化。dnd-node 移除（职责由其他 Skill 覆盖）。 |
+| 2026-06-10 | 3.3 | 模组标准化模板（§〇速查索引→§九叙事锚点）。新增 dnd-module-gen Skill。L2 重构为标准化格式。Skill 联动升级。 |
+| 2026-06-10 | 3.4 | **叙事增强 + 脚本健壮性 + 玩家体验**：① L6 节点增加 HTML 注释分隔符（机器可读）② roll_dice.py 暴击/大失败自动标记 ③ dnd-dm SKILL.md 瘦身至 172 行 ④ 新增 Gut Check（直觉骰）规则 ⑤ 新增慢动作时刻叙事规则 ⑥ sync_state.py 增加 AC/XP/Buff 一致性检查 ⑦ 新增 L0_战役总览（generate_overview.py 自动生成）⑧ 卡芙卡私下低语机制 ⑨ L5 环境状态栈 ⑩ L5 情绪节拍追踪器 |

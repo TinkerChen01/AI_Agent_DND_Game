@@ -267,9 +267,9 @@ description: 初始化D&D 5e战斗——读取参战者状态、投先攻、写�
 
 ---
 
-#### 3.7 dnd-node — L6 节点追加
+#### 3.7 dnd-node — L6 节点追加（已移除）
 
-从原 dnd-节点 Skill 迁移。内容不变。
+> **注**：v3.2 中已主动移除。节点追加逻辑已由 dnd-save（完整存档时追加）、dnd-checkpoint（轻量同步时追加）、dnd-scene（场景切换时追加）充分覆盖，不再需要独立 Skill。
 
 ---
 
