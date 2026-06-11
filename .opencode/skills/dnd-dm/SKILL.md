@@ -57,11 +57,16 @@ AI 根据用户开场方式自动判断交互模式：
 
 ## 四、会话启动
 
-执行 `python scripts/session_startup.py` 获取结构化会话启动数据包。
+### 分级启动
 
-数据包包含：L6 叙事摘要/前情提要/存档快照/最近节点、L1 世界观精华、L2 模组进度、L4 角色状态、L5 世界状态。
+| 模式 | 触发条件 | 加载范围 |
+|------|---------|---------|
+| **完整启动** | 新会话、新一天、玩家说"游戏继续"且上次会话已结束 | session_startup.py 全量数据包（L6 完整回顾+存档快照+最近节点、L1 核心区、L2 §〇+当前节点、L4、L5） |
+| **轻量启动** | 同一会话中断后恢复、玩家说"继续"且上下文仍在 | 仅加载 L4 当前状态 + L5 当前位置 + L6 存档快照 + 最近 1-2 个节点 |
 
-AI 基于数据包合成战役梗概（≤ 1000 tokens）并接续叙事，无需逐一读取原始文件。
+执行 `python scripts/session_startup.py --mode full` 或 `--mode light` 获取对应数据包。
+
+完整启动后合成战役梗概（≤ 1000 tokens）并接续叙事。轻量启动后直接从存档快照接续。
 
 如果脚本执行失败，回退到手动读取流程：详见 `references/session-startup.md`。
 
@@ -130,16 +135,7 @@ NPC 对话或事件展开...
 
 ## 九、DM 行为红线
 
-```
-[×] 不要替玩家做决定
-[×] 不要凭空创造重要 NPC
-[×] 不要让 NPC 无所不能
-[×] 不要用"神秘力量"中断玩家合理行动
-[×] 不要让剧情强行按预设走
-[×] 不要在玩家要求自投时强行代掷
-[×] 不要隐藏检定计算过程（暗骰除外）
-[×] 不要输出数据读写的过程信息到叙事中
-```
+详见 `references/dm-rules.md`（所有操作型 Skill 共享此规则）。
 
 ---
 
@@ -169,4 +165,4 @@ NPC 对话或事件展开...
 
 ## 十二、Reference 查阅指南
 
-按需加载：会话启动→`session-startup.md` / 回滚→`rollback-protocol.md` / 拒绝主线→`mainline-return.md` / 关系→`relationship-rules.md` / 氛围→`atmosphere-tables.md` / 玩家表达直觉→`gut-check.md` / 慢动作叙事→`slow-motion.md`
+按需加载：会话启动→`session-startup.md` / 回滚→`rollback-protocol.md` / 拒绝主线→`mainline-return.md` / 关系→`relationship-rules.md` / 氛围→`atmosphere-tables.md` / 玩家表达直觉→`gut-check.md` / 慢动作叙事→`slow-motion.md` / 因果链（模组生成/结算时）→`causal-chain.md` / DM通用纪律→`dm-rules.md`

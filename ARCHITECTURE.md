@@ -1,4 +1,4 @@
-# 兰斯的冒险 — 架构说明（v3.4）
+# 兰斯的冒险 — 架构说明（v3.5）
 
 > 本文档记录项目的文件体系与 Skill 架构设计。
 > 最后更新：2026-06-10
@@ -55,6 +55,20 @@
 - **L2 重构** → 丝线回廊 L2 重构为标准化格式：新增 §〇 速查索引、floorplan JSON、三幕结构标注、失败安全网、完成条件、L5 初始化模板
 - **Skill 联动升级** → dnd-map 改为从 L2 §〇+§二 定位地图数据；dnd-expand 遵循模板格式扩展；dnd-settle 集成 dnd-module-gen 生成新模组
 
+### v3.5 核心变化（冗余精简 + 健壮性增强）
+
+- **L5 瘦身** → 移除 §一 战役总览（与 L0 重复）；§十 因果链迁出至 `dnd-dm/references/causal-chain.md`（仅在模组生成/结算时按需加载，日常不占 token）；Plot Flags 添加 snake_case 命名规范，旧模组 flag 归档至独立表；章节重编号（§一~§八）
+- **L6 精简** → 前情提要从三层（叙事摘要+完整回顾+存档快照）合并为两层（完整回顾+存档快照），消除信息冗余，每次启动节省约 200 tokens
+- **L1 分区加载** → 标注核心常驻区（§一 世界概况，约 20 行）和扩展按需区（§二~§八），会话启动时仅加载核心区，扩展区按主题触发读取
+- **L4 攻击表精简** → 移除所有伤害变体行（狂暴/鲁莽+巨武），仅保留当前装备基础数据，变体由 roll_dice.py 实时计算
+- **L4b 快照规则强化** → 战斗快照从"超过 10 回合每 3 回合"改为事件驱动触发（HP 变化 ≥ 25%、角色倒地、buff 消退、Boss 换阶段、增援入场）+ 每 5 回合定期刷新
+- **分级会话启动** → dnd-dm 新增完整启动和轻量启动两种模式，中断恢复时不再全量加载五个文件
+- **DM 纪律集中化** → 创建 `dnd-dm/references/dm-rules.md` 共享规则，dnd-combat/dnd-save/dnd-checkpoint 移除各自重复的纪律文本，改为引用共享 reference
+- **dnd-scene 收窄** → 明确触发/不触发条件（同房间位置调整不触发、同楼层相邻房间不触发除非未探索），局部移动保留环境栈做增量修改而非重建
+- **dnd-expand/dnd-module-gen 边界** → 添加五维度判断表（空间范围/叙事范围/内容量/NPC/时间线），灰色地带给出过渡方案
+- **dnd-save 关系强制检查** → 存档时如果会话中发生过关系相关互动，必须执行 relationship_check.py 确认 trend 状态
+- **新增 reference 文件** → `causal-chain.md`（因果链追踪）、`dm-rules.md`（DM 通用纪律）
+
 ---
 
 ## 三、文件体系
@@ -83,7 +97,7 @@
 .opencode/skills/
 ├── dnd-dm/              ← 主 Skill：DM 行为总纲
 │   ├── SKILL.md
-│   ├── references/      ← 8 个按需加载文档（含 atmosphere-tables.md, gut-check.md, slow-motion.md）
+│   ├── references/      ← 9 个按需加载文档（含 atmosphere-tables.md, gut-check.md, slow-motion.md, dm-rules.md, causal-chain.md）
 │   └── scripts/         ← session_startup.py + relationship_check.py + generate_overview.py
 ├── dnd-kafka/           ← 角色 Skill：卡芙卡（含私下低语机制）
 │   ├── SKILL.md
@@ -157,7 +171,7 @@ OpenCode 加载项目
 dnd-dm Skill 注入（核心规则常驻）
   │
   ▼
-AI 读取 L6 → 叙事摘要、前情提要、存档快照
+AI 读取 L6 → 过往冒险摘要、前情提要（完整回顾+存档快照）、最近节点
   │
   ▼
 AI 读取 L1 → L2 → L4 → L5
@@ -212,3 +226,4 @@ opencode
 | 2026-06-10 | 3.2 | Script 注入：8 个 Skill 新增 scripts/ 目录（query.py/session_startup.py/roll_dice.py/init_combat.py/rest_day.py/sync_state.py/generate_storybook.py/render_map.py/relationship_check.py）。新增 dnd-map Skill（ASCII 战术地图系统）。新增氛围骰子系统。战斗分级（完整/快速）。关系追踪自动化。dnd-node 移除（职责由其他 Skill 覆盖）。 |
 | 2026-06-10 | 3.3 | 模组标准化模板（§〇速查索引→§九叙事锚点）。新增 dnd-module-gen Skill。L2 重构为标准化格式。Skill 联动升级。 |
 | 2026-06-10 | 3.4 | **叙事增强 + 脚本健壮性 + 玩家体验**：① L6 节点增加 HTML 注释分隔符（机器可读）② roll_dice.py 暴击/大失败自动标记 ③ dnd-dm SKILL.md 瘦身至 172 行 ④ 新增 Gut Check（直觉骰）规则 ⑤ 新增慢动作时刻叙事规则 ⑥ sync_state.py 增加 AC/XP/Buff 一致性检查 ⑦ 新增 L0_战役总览（generate_overview.py 自动生成）⑧ 卡芙卡私下低语机制 ⑨ L5 环境状态栈 ⑩ L5 情绪节拍追踪器 |
+| 2026-06-11 | 3.5 | **冗余精简 + 健壮性增强**：① L5 移除重复战役总览、因果链迁出至 reference（日常不占 token）、Plot Flags 添加 snake_case 命名规范+旧 flag 归档 ② L6 前情提要从三层合并为两层 ③ L1 分区加载（核心常驻区+扩展按需区）④ L4 攻击表精简（变体由脚本实时计算）⑤ L4b 快照规则改为事件驱动+定期刷新 ⑥ dnd-dm 分级会话启动（完整/轻量）⑦ DM 纪律集中化为共享 reference ⑧ dnd-scene 收窄触发范围 ⑨ dnd-expand/dnd-module-gen 边界澄清 ⑩ dnd-save 关系强制检查 |
